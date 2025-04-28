@@ -1,13 +1,17 @@
 
 
 
-
-
 # libaries ------
 
 library(data.table)
 library(stringr)
 
+library(ggplot2)
+library(ggh4x)
+library(shadowtext)
+
+library(paletteer)
+library(colorspace)
 
 # load data ------
 
@@ -22,13 +26,8 @@ info <- countries::country_info(d0$Country) |> setDT()
 
 d0$region <- info$region
 
-# Plot 1: Packcircles ----------------
+# Plot 1 ----------------
 
-library(packcircles)
-library(ggplot2)
-library(paletteer)
-library(shadowtext)
-library(colorspace)
 
 d1 <- d0[which(!is.na(`No. locations`)), by = .(region, Country, Status), .(N = `No. locations` |> sum())]
 
@@ -39,13 +38,16 @@ gr1 <- d1 |>
     scale_fill_stepsn(transform = "log10", colors = c('#00429d', '#73a2c6', '#f4777f', '#93003a')) +
     scale_x_discrete(expand = c(0, 0)) +
     scale_y_discrete(expand = c(0, 0)) +
-    
+
     facet_grid(rows = vars(region), scales = "free_y", space = "free_y") +
-    
+
     theme(
-        axis.text.x = element_text(angle = 45, hjust = 1)
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        
+        strip.text.y = element_text(angle = 0)
     )
 
+# Plot 2 ------------------------------------------
 
 d2 <- d0[, by = .(region, Country), .(`Start Date` = min(`Start Date`, na.rm = TRUE), `End Date` = max(`End Date`, na.rm = TRUE))]
 
@@ -55,16 +57,66 @@ gr2 <- d0 |>
     ggplot(aes(y = Country)) +
     geom_segment(aes(x = `Start Date`, y = Country, xend = `End Date`, yend = Country)) +
     geom_segment(data = d3, aes(x = `Start Date`, y = Country, xend = max(d0$`End Date`, na.rm = TRUE), yend = Country), linetype = "dashed") +
-    
+
     geom_point(aes(x = `Start Date`), shape = 21, size = 2, stroke = .25, fill = "white", color = "#00429d") +
     geom_point(aes(x = `End Date`), shape = 21, size = 2, stroke = .25, fill = "white", color = "#93003a") +
-    
+
     geom_point(data = d2, aes(y = Country, x = `Start Date`), shape = 21, size = 2.5, stroke = .25, color = "white", fill = "#00429d") +
-    geom_point(data = d2, aes(y = Country, x = `End Date`), shape = 21, size = 2.5, stroke = .25, color = "white", fill = "#93003a")
+    geom_point(data = d2, aes(y = Country, x = `End Date`), shape = 21, size = 2.5, stroke = .25, color = "white", fill = "#93003a") +
+    facet_grid(rows = vars(region), scales = "free_y", space = "free_y")
 
 
 
+# Plot n ------------------------------------------------
 
+dd <- d0[which(!is.na(`No. locations`)), c("region", "Country", "Status", "Start Date", "End Date", "No. locations"), with = FALSE] |> unique()
+
+dd$`Start Date` <- dd$`Start Date` |> lubridate::as_date()
+dd$`End Date`   <- dd$`End Date` |> lubridate::as_date()
+dd$`End Date`   <- ifelse(is.na(dd$`End Date`), Sys.Date() |> lubridate::as_date(), dd$`End Date`)
+dd$`End Date`   <- dd$`End Date` |> lubridate::as_date()
+
+a <- dd[, c("region", "Country", "Status", "Start Date", "No. locations"), with = FALSE]
+b <- dd[, c("region", "Country", "Status", "End Date", "No. locations"), with = FALSE]
+
+colnames(a)[4] <- "Date"
+colnames(b)[4] <- "Date"
+
+b$`No. locations` <- ifelse(b$Status == "Defunct", (-1) * b$`No. locations`, 0)
+
+
+dd <- rbind(a, b) |> unique()
+dd <- dd[order(region, Country, Date)]
+dd[, by = .(region, Country), N := cumsum(`No. locations`)]
+
+
+dd <- dd[order(Country, -Date)]
+
+ty <- dd[, by = Country, head(.SD, 1)]
+ty <- ty[which(N == 0)]
+
+dd$activity <- ifelse(dd$Country %in% ty$Country, "Defunctional", "Active")
+
+gr_n <- dd |>
+    ggplot(aes(Date, N)) +
+    geom_area(aes(group = Country, fill = activity), alpha = .25) +
+    geom_line(aes(group = Country, color = activity)) +
+    geom_point(aes(color = activity), shape = 21, fill = "white", stroke = .25) +
+    facet_wrap2(vars(region, Country), nrow = 4) +
+    
+    scale_y_continuous(
+        transform = scales::pseudo_log_trans(base = 10), 
+        breaks = c(1, 10, 100, 1000),
+        expand = c(0, 0), limits = c(0, 5000)
+    ) +
+    
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom"
+    )
+
+
+# Plot 3 ---------------------------------
 
 d4 <- d0$Diseases |> 
     str_split("\\,") |>
@@ -80,65 +132,44 @@ d4$Disease <- ifelse(is.na(d4$Disease), "Not available", d4$Disease)
 gr3 <- d4 |>
     ggplot(aes(Disease, Country)) +
     geom_tile(color = "white") +
+    facet_grid(rows = vars(region), scales = "free_y", space = "free_y") +
     theme(
-        axis.text.x = element_text(angle = 45, hjust = 1)
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text.y = element_text(angle = 0)
     )
+
+
+# Patchwork --------------------------------------------
 
 library(patchwork)
 
+multi1 <- (gr_n | gr3) + plot_layout(widths = c(3, 1))
 
-(gr1 | gr2 | gr3) + plot_layout(widths = c(.5, 3.5, 2))
+multi2 <- (gr1 | gr2 | gr3) + plot_layout(widths = c(.5, 3.5, 2))
 
-
-
-
-d1 <- d1[order(-N)] |> split(by = "Status")
-
-p1 <- d1 |>
-    lapply(function(x) {
-        
-        o <- log10(x$N) |>
-            circleProgressiveLayout(sizetype = 'area') |>
-            circleLayoutVertices(npoints = 100) |>
-            setDT()
-        
-        o <- cbind(x[o$id], o)
-        
-    }) |>
-    rbindlist()
+# Save Plots -----------------------------------------
 
 
-
-p1t <- p1[, by = .(Status, Country, N), .(x = (min(x) + max(x)) / 2, y = (min(y) + max(y)) / 2)]
-
-p1t$Country <- p1t$Country |> str_wrap(width = 5)
-
-gr1 = p1 |>
-    ggplot() + 
-    geom_polygon(aes(x, y, group = id, fill = N), colour = "grey10", linewidth = .25) +
-    geom_shadowtext(data = p1t, aes(x, y, label = Country, size = N), fontface = "bold", color = "grey10", bg.color = "white", bg.r = .05) +
+save_plot <- function(gr, w, h, file_name = "Rplot") {
     
-    scale_fill_stepsn(colors = paletteer_c("ggthemes::Blue-Teal", 8), 
-                      breaks = c(250, 500, 750, 1000, 1250, 1500, 1750),
-                      guide = guide_colorsteps(barwidth = unit(16, "lines"),
-                                               barheight = unit(.5, "lines"),
-                                               title = "No. of locations")) +
-    
-    scale_size_continuous(range = c(2, 6), guide = "none") +
-    
-    facet_wrap(vars(Status), nrow = 1) +
-    
-    coord_equal() +
-    theme_void() + 
-    theme(
-        legend.position = "bottom",
-        legend.title.position = "top"
+    ggsave(
+        plot = gr, filename = paste0(file_name, ".png"),
+        width = w, height = h, units = "in", dpi = 600
     )
+    
+    ggsave(
+        plot = gr, filename = paste0(file_name, ".pdf"),
+        width = w, height = h, units = "in", device = cairo_pdf
+    )
+    
+}
 
 
-gr1
+save_plot(gr1, file_name = "plots/01_plot", w = 4, h = 10)
+save_plot(gr2, file_name = "plots/02_plot", w = 5, h = 10)
+save_plot(gr3, file_name = "plots/03_plot", w = 5, h = 10)
+save_plot(multi1, file_name = "plots/01_multi_plot", w = 12, h = 10)
+save_plot(multi2, file_name = "plots/02_multi_plot", w = 12, h = 10)
 
-ggsave(
-    plot = gr1, filename = "01_plot.png",
-    width = 6, height = 6, units = "in", dpi = 600
-)
+
+
