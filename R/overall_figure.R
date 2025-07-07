@@ -1,5 +1,4 @@
 
-
 rm(list = ls())
 gc()
 
@@ -74,7 +73,7 @@ gr1 <- d2 |>
     
     ggplot(aes(Status, Country)) +
     
-    geom_tile(aes(fill = N), color = "grey10", linewidth = .25) +
+    geom_tile(aes(fill = N), color = "grey", linewidth = .25) +
     
     scale_fill_stepsn(
         transform = "log10", 
@@ -82,30 +81,31 @@ gr1 <- d2 |>
         name = "No. of locations",
         na.value = "grey97",
         guide = guide_colorsteps(
-            barwidth = unit(.5, "lines"),
-            barheight = unit(10, "lines")
+            barwidth = unit(10, "lines"),
+            barheight = unit(.5, "lines")
         )
     ) +
     
     scale_x_discrete(expand = c(0, 0)) +
     scale_y_discrete(expand = c(0, 0)) +
     
-    facet_grid(rows = vars(region), scales = "free_y", space = "free_y") +
+    facet_grid2(rows = vars(region), scales = "free_y", space = "free_y", switch = "y") +
     
     theme_minimal() +
     
     theme(
-        
-        legend.title.position = "left",
-        
-        legend.title = element_text(size = 8, angle = 90, hjust = .5, face = "bold", color = "grey30"),
+        legend.position = "left",
+        legend.title.position = "top",
+        legend.title = element_text(size = 8, angle = 0, hjust = 0, face = "bold", color = "grey30"),
         legend.text = element_text(size = 8, color = "grey30"),
         
         panel.grid = element_blank(),
+        panel.border = element_rect(fill = NA, linewidth = .5),
         
         axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title = element_blank(),
         
-        strip.text.y = element_blank()
+        strip.text.y = element_blank()# element_text(face = "bold")
     )
 
 # Plot 2 ------------------------------------------
@@ -122,23 +122,43 @@ gr2 <- d0 |>
     geom_segment(aes(x = `Start Date`, y = Country, xend = `End Date`, yend = Country)) +
     geom_segment(data = d3, aes(x = `Start Date`, y = Country, xend = max(d0$`End Date`, na.rm = TRUE), yend = Country), linetype = "dashed") +
     
-    geom_point(aes(x = `Start Date`), shape = 21, size = 2, stroke = .25, fill = "white", color = "#00429d") +
-    geom_point(aes(x = `End Date`), shape = 21, size = 2, stroke = .25, fill = "white", color = "#93003a") +
+    geom_point(aes(x = `Start Date`, color = "Start Date"), shape = 21, size = 2, stroke = .25, fill = "white") +
+    geom_point(aes(x = `End Date`, color = "End Date"), shape = 21, size = 2, stroke = .25, fill = "white") +
     
-    geom_point(data = d2, aes(y = Country, x = `Start Date`), shape = 21, size = 2.5, stroke = .25, color = "white", fill = "#00429d") +
-    geom_point(data = d2, aes(y = Country, x = `End Date`), shape = 21, size = 2.5, stroke = .25, color = "white", fill = "#93003a") +
+    geom_point(data = d2, aes(y = Country, x = `Start Date`, fill = "Start Date"), shape = 21, size = 2.5, stroke = .25, color = "white") +
+    geom_point(data = d2, aes(y = Country, x = `End Date`, fill = "End Date"), shape = 21, size = 2.5, stroke = .25, color = "white") +
+    
+    scale_fill_manual(
+        values = c("Start Date" = "#20854E", "End Date" = "#374E55"),
+        guide = guide_legend(override.aes = list(size = 4))
+    ) +
+    
+    scale_color_manual(
+        values = c("Start Date" = "#20854E", "End Date" = "#374E55") |> darken(.25),
+        guide = "none"
+    ) +
     
     facet_grid(rows = vars(region), scales = "free_y", space = "free_y") +
     
     theme_minimal() +
     
     theme(
-        axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
+        legend.title.position = "top",
+        legend.title = element_text(face = "bold", size = 8),
+        axis.title = element_blank(),
+        # axis.title.y = element_blank(),
+        # axis.text.y = element_blank(),
         
-        panel.border = element_rect(fill = NA, linewidth = .4),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        
+        panel.grid.major.x = element_line(linetype = "dashed", lineend = "round"),
+        
+        panel.border = element_rect(fill = NA, linewidth = .5),
         strip.text.y = element_blank()
-    )
+    ) +
+    
+    labs(fill = "Lifespan")
 
 
 # Plot n ------------------------------------------------
@@ -206,20 +226,25 @@ d4$Disease <- ifelse(is.na(d4$Disease), "Not available", d4$Disease)
 gr3 <- d4 |>
     ggplot(aes(Disease, Country)) +
     
-    geom_tile(color = "white") +
+    geom_tile(color = "white", fill = "grey25", linewidth = .25) +
     
     facet_grid(rows = vars(region), scales = "free_y", space = "free_y") +
+    
+    scale_x_discrete(expand = c(0, 0)) +
+    scale_y_discrete(expand = c(0, 0)) +
     
     theme_minimal() +
     
     theme(
-        axis.title.y = element_blank(),
+        axis.title = element_blank(),
+        # axis.title.y = element_blank(),
         
-        axis.text.y = element_blank(),
+        # axis.text.y = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1),
-        strip.text.y = element_text(angle = 0),
+        strip.text.y = element_text(angle = 0, hjust = 0, face = "bold"),
         
-        panel.border = element_rect(fill = NA, linewidth = .4)
+        panel.border = element_rect(fill = NA, linewidth = .5),
+        panel.grid = element_line(linetype = "dotted", lineend = "round")
     )
 
 # Patchwork --------------------------------------------
@@ -228,7 +253,13 @@ library(patchwork)
 
 # multi1 <- (gr_n | gr3) + plot_layout(widths = c(3, 1))
 
-multi2 <- (gr1 | gr2 | gr3) + plot_layout(widths = c(.5, 3.5, 2))
+multi2 <- (gr1 | gr2 | gr3) + 
+    plot_annotation(tag_levels = "A") +
+    plot_layout(widths = c(.5, 3.5, 2), guides = "collect") &
+    theme(
+        plot.tag = element_text(face = "bold", size = 14),
+        legend.position = "bottom"
+    )
 
 # Save Plots -----------------------------------------
 
@@ -248,11 +279,11 @@ save_plot <- function(gr, w, h, file_name = "Rplot") {
 }
 
 
-save_plot(gr1, file_name = "plots/01_plot", w = 4, h = 10)
-save_plot(gr2, file_name = "plots/02_plot", w = 5, h = 10)
-save_plot(gr3, file_name = "plots/03_plot", w = 5, h = 10)
+# save_plot(gr1, file_name = "plots/01_plot", w = 4, h = 10)
+# save_plot(gr2, file_name = "plots/02_plot", w = 5, h = 10)
+# save_plot(gr3, file_name = "plots/03_plot", w = 5, h = 10)
 # save_plot(multi1, file_name = "plots/01_multi_plot", w = 12, h = 10)
-save_plot(multi2, file_name = "plots/02_multi_plot", w = 12, h = 10)
+save_plot(multi2, file_name = "plots/02_multi_plot", w = 10, h = 9)
 
 
 
