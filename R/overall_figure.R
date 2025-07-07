@@ -251,7 +251,7 @@ save_plot <- function(gr, w, h, file_name = "Rplot") {
 save_plot(gr1, file_name = "plots/01_plot", w = 4, h = 10)
 save_plot(gr2, file_name = "plots/02_plot", w = 5, h = 10)
 save_plot(gr3, file_name = "plots/03_plot", w = 5, h = 10)
-save_plot(multi1, file_name = "plots/01_multi_plot", w = 12, h = 10)
+# save_plot(multi1, file_name = "plots/01_multi_plot", w = 12, h = 10)
 save_plot(multi2, file_name = "plots/02_multi_plot", w = 12, h = 10)
 
 
