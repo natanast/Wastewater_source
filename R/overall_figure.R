@@ -134,7 +134,7 @@ gr2 <- d0 |>
     
     theme(
         axis.title.y = element_blank(),
-        # axis.text.y = element_blank(),
+        axis.text.y = element_blank(),
         
         panel.border = element_rect(fill = NA, linewidth = .4),
         strip.text.y = element_blank()
@@ -142,52 +142,52 @@ gr2 <- d0 |>
 
 
 # Plot n ------------------------------------------------
-
-dd <- d0[which(!is.na(`No. locations`)), c("region", "Country", "Status", "Start Date", "End Date", "No. locations"), with = FALSE] |> unique()
-
-dd$`Start Date` <- dd$`Start Date` |> lubridate::as_date()
-dd$`End Date`   <- dd$`End Date` |> lubridate::as_date()
-dd$`End Date`   <- ifelse(is.na(dd$`End Date`), Sys.Date() |> lubridate::as_date(), dd$`End Date`)
-dd$`End Date`   <- dd$`End Date` |> lubridate::as_date()
-
-a <- dd[, c("region", "Country", "Status", "Start Date", "No. locations"), with = FALSE]
-b <- dd[, c("region", "Country", "Status", "End Date", "No. locations"), with = FALSE]
-
-colnames(a)[4] <- "Date"
-colnames(b)[4] <- "Date"
-
-b$`No. locations` <- ifelse(b$Status == "Defunct", (-1) * b$`No. locations`, 0)
-
-
-dd <- rbind(a, b) |> unique()
-dd <- dd[order(region, Country, Date)]
-dd[, by = .(region, Country), N := cumsum(`No. locations`)]
-
-
-dd <- dd[order(Country, -Date)]
-
-ty <- dd[, by = Country, head(.SD, 1)]
-ty <- ty[which(N == 0)]
-
-dd$activity <- ifelse(dd$Country %in% ty$Country, "Defunctional", "Active")
-
-gr_n <- dd |>
-    ggplot(aes(Date, N)) +
-    geom_area(aes(group = Country, fill = activity), alpha = .25) +
-    geom_line(aes(group = Country, color = activity)) +
-    geom_point(aes(color = activity), shape = 21, fill = "white", stroke = .25) +
-    facet_wrap2(vars(region, Country), nrow = 4) +
-    
-    scale_y_continuous(
-        transform = scales::pseudo_log_trans(base = 10), 
-        breaks = c(1, 10, 100, 1000),
-        expand = c(0, 0), limits = c(0, 5000)
-    ) +
-    
-    theme(
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "bottom"
-    )
+# 
+# dd <- d0[which(!is.na(`No. locations`)), c("region", "Country", "Status", "Start Date", "End Date", "No. locations"), with = FALSE] |> unique()
+# 
+# dd$`Start Date` <- dd$`Start Date` |> lubridate::as_date()
+# dd$`End Date`   <- dd$`End Date` |> lubridate::as_date()
+# dd$`End Date`   <- ifelse(is.na(dd$`End Date`), Sys.Date() |> lubridate::as_date(), dd$`End Date`)
+# dd$`End Date`   <- dd$`End Date` |> lubridate::as_date()
+# 
+# a <- dd[, c("region", "Country", "Status", "Start Date", "No. locations"), with = FALSE]
+# b <- dd[, c("region", "Country", "Status", "End Date", "No. locations"), with = FALSE]
+# 
+# colnames(a)[4] <- "Date"
+# colnames(b)[4] <- "Date"
+# 
+# b$`No. locations` <- ifelse(b$Status == "Defunct", (-1) * b$`No. locations`, 0)
+# 
+# 
+# dd <- rbind(a, b) |> unique()
+# dd <- dd[order(region, Country, Date)]
+# dd[, by = .(region, Country), N := cumsum(`No. locations`)]
+# 
+# 
+# dd <- dd[order(Country, -Date)]
+# 
+# ty <- dd[, by = Country, head(.SD, 1)]
+# ty <- ty[which(N == 0)]
+# 
+# dd$activity <- ifelse(dd$Country %in% ty$Country, "Defunctional", "Active")
+# 
+# gr_n <- dd |>
+#     ggplot(aes(Date, N)) +
+#     geom_area(aes(group = Country, fill = activity), alpha = .25) +
+#     geom_line(aes(group = Country, color = activity)) +
+#     geom_point(aes(color = activity), shape = 21, fill = "white", stroke = .25) +
+#     facet_wrap2(vars(region, Country), nrow = 4) +
+#     
+#     scale_y_continuous(
+#         transform = scales::pseudo_log_trans(base = 10), 
+#         breaks = c(1, 10, 100, 1000),
+#         expand = c(0, 0), limits = c(0, 5000)
+#     ) +
+#     
+#     theme(
+#         axis.text.x = element_text(angle = 45, hjust = 1),
+#         legend.position = "bottom"
+#     )
 
 
 # Plot 3 ---------------------------------
@@ -215,20 +215,18 @@ gr3 <- d4 |>
     theme(
         axis.title.y = element_blank(),
         
-        # axis.text.y = element_blank(),
+        axis.text.y = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1),
         strip.text.y = element_text(angle = 0),
         
         panel.border = element_rect(fill = NA, linewidth = .4)
     )
 
-gr3
-
 # Patchwork --------------------------------------------
 
 library(patchwork)
 
-multi1 <- (gr_n | gr3) + plot_layout(widths = c(3, 1))
+# multi1 <- (gr_n | gr3) + plot_layout(widths = c(3, 1))
 
 multi2 <- (gr1 | gr2 | gr3) + plot_layout(widths = c(.5, 3.5, 2))
 
