@@ -30,26 +30,44 @@ info <- countries::country_info(d0$Country) |> setDT()
 
 d0$region <- info$region
 
+d0$Country <- d0$Country |> factor(levels = rev(sort(unique(d0$Country))))
+
+
 
 # Plot 1 ----------------
 
 
 d1 <- d0[which(!is.na(`No. locations`)), by = .(region, Country, Status), .(N = `No. locations` |> sum())]
 
+# Define missing countries and their regions
+missing_countries <- data.table(
+    Country = rep(c("Bangladesh", "Turkey", "Greece", "Hungary", "Slovakia"), each = 2),
+    Status = rep(c("Active", "Defunct"), times = 5),
+    N = 0
+)
+
+# Add corresponding regions
+missing_countries[, region := fifelse(
+    Country %in% c("Bangladesh", "Turkey"), "Asia",
+    "Europe"
+)]
+
+# Reorder columns to match d1
+setcolorder(missing_countries, names(d1))
+
+# Combine with original
+d1 <- rbind(d1, missing_countries)
+
 
 all_combos <- CJ(Country = unique(d1$Country), Status = unique(d1$Status), unique = TRUE)
 d2 <- merge(all_combos, d1, by = c("Country", "Status"), all.x = TRUE)
 
-
 region_lookup <- unique(d1[, .(Country, region)])
 d2 <- merge(d2, region_lookup, by = "Country", all.x = TRUE)
-
 
 d2[, region := fcoalesce(region.x, region.y)]
 d2[, c("region.x", "region.y") := NULL]  
 
-
-d2$Country <- d2$Country |> factor(levels = rev(sort(unique(d2$Country))))
 
 
 gr1 <- d2 |>
@@ -85,18 +103,17 @@ gr1 <- d2 |>
         
         panel.grid = element_blank(),
         
-        # axis.title.y = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1),
         
-        strip.text.y = element_text(angle = 0)
+        strip.text.y = element_blank()
     )
-
 
 # Plot 2 ------------------------------------------
 
 d2 <- d0[, by = .(region, Country), .(`Start Date` = min(`Start Date`, na.rm = TRUE), `End Date` = max(`End Date`, na.rm = TRUE))]
 
 d3 <- d0[which(Status == "Active"), by = .(region, Country), .(`Start Date` = min(`Start Date`, na.rm = TRUE))]
+
 
 gr2 <- d0 |>
     
@@ -113,9 +130,16 @@ gr2 <- d0 |>
     
     facet_grid(rows = vars(region), scales = "free_y", space = "free_y") +
     
-    theme_minimal()
+    theme_minimal() +
+    
+    theme(
+        axis.title.y = element_blank(),
+        # axis.text.y = element_blank(),
+        
+        panel.border = element_rect(fill = NA, linewidth = .4),
+        strip.text.y = element_blank()
+    )
 
-gr2
 
 # Plot n ------------------------------------------------
 
@@ -181,13 +205,24 @@ d4$Disease <- ifelse(is.na(d4$Disease), "Not available", d4$Disease)
 
 gr3 <- d4 |>
     ggplot(aes(Disease, Country)) +
+    
     geom_tile(color = "white") +
+    
     facet_grid(rows = vars(region), scales = "free_y", space = "free_y") +
+    
+    theme_minimal() +
+    
     theme(
+        axis.title.y = element_blank(),
+        
+        # axis.text.y = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1),
-        strip.text.y = element_text(angle = 0)
+        strip.text.y = element_text(angle = 0),
+        
+        panel.border = element_rect(fill = NA, linewidth = .4)
     )
 
+gr3
 
 # Patchwork --------------------------------------------
 
