@@ -1,5 +1,8 @@
 
 
+rm(list = ls())
+gc()
+
 
 # libaries ------
 
@@ -12,6 +15,7 @@ library(shadowtext)
 
 library(paletteer)
 library(colorspace)
+
 
 # load data ------
 
@@ -26,26 +30,67 @@ info <- countries::country_info(d0$Country) |> setDT()
 
 d0$region <- info$region
 
+
 # Plot 1 ----------------
 
 
 d1 <- d0[which(!is.na(`No. locations`)), by = .(region, Country, Status), .(N = `No. locations` |> sum())]
 
 
-gr1 <- d1 |>
+all_combos <- CJ(Country = unique(d1$Country), Status = unique(d1$Status), unique = TRUE)
+d2 <- merge(all_combos, d1, by = c("Country", "Status"), all.x = TRUE)
+
+
+region_lookup <- unique(d1[, .(Country, region)])
+d2 <- merge(d2, region_lookup, by = "Country", all.x = TRUE)
+
+
+d2[, region := fcoalesce(region.x, region.y)]
+d2[, c("region.x", "region.y") := NULL]  
+
+
+d2$Country <- d2$Country |> factor(levels = rev(sort(unique(d2$Country))))
+
+
+gr1 <- d2 |>
+    
     ggplot(aes(Status, Country)) +
-    geom_tile(aes(fill = N), color = "white") +
-    scale_fill_stepsn(transform = "log10", colors = c('#00429d', '#73a2c6', '#f4777f', '#93003a')) +
+    
+    geom_tile(aes(fill = N), color = "grey10", linewidth = .25) +
+    
+    scale_fill_stepsn(
+        transform = "log10", 
+        colors = c('#00429d', '#73a2c6', '#f4777f', '#93003a'),
+        name = "No. of locations",
+        na.value = "grey97",
+        guide = guide_colorsteps(
+            barwidth = unit(.5, "lines"),
+            barheight = unit(10, "lines")
+        )
+    ) +
+    
     scale_x_discrete(expand = c(0, 0)) +
     scale_y_discrete(expand = c(0, 0)) +
-
+    
     facet_grid(rows = vars(region), scales = "free_y", space = "free_y") +
-
+    
+    theme_minimal() +
+    
     theme(
+        
+        legend.title.position = "left",
+        
+        legend.title = element_text(size = 8, angle = 90, hjust = .5, face = "bold", color = "grey30"),
+        legend.text = element_text(size = 8, color = "grey30"),
+        
+        panel.grid = element_blank(),
+        
+        # axis.title.y = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1),
         
         strip.text.y = element_text(angle = 0)
     )
+
 
 # Plot 2 ------------------------------------------
 
@@ -54,18 +99,23 @@ d2 <- d0[, by = .(region, Country), .(`Start Date` = min(`Start Date`, na.rm = T
 d3 <- d0[which(Status == "Active"), by = .(region, Country), .(`Start Date` = min(`Start Date`, na.rm = TRUE))]
 
 gr2 <- d0 |>
+    
     ggplot(aes(y = Country)) +
+    
     geom_segment(aes(x = `Start Date`, y = Country, xend = `End Date`, yend = Country)) +
     geom_segment(data = d3, aes(x = `Start Date`, y = Country, xend = max(d0$`End Date`, na.rm = TRUE), yend = Country), linetype = "dashed") +
-
+    
     geom_point(aes(x = `Start Date`), shape = 21, size = 2, stroke = .25, fill = "white", color = "#00429d") +
     geom_point(aes(x = `End Date`), shape = 21, size = 2, stroke = .25, fill = "white", color = "#93003a") +
-
+    
     geom_point(data = d2, aes(y = Country, x = `Start Date`), shape = 21, size = 2.5, stroke = .25, color = "white", fill = "#00429d") +
     geom_point(data = d2, aes(y = Country, x = `End Date`), shape = 21, size = 2.5, stroke = .25, color = "white", fill = "#93003a") +
-    facet_grid(rows = vars(region), scales = "free_y", space = "free_y")
+    
+    facet_grid(rows = vars(region), scales = "free_y", space = "free_y") +
+    
+    theme_minimal()
 
-
+gr2
 
 # Plot n ------------------------------------------------
 
